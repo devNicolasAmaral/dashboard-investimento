@@ -1,0 +1,15 @@
+# Ambiente Virtual
+.venv
+venv/
+env/
+
+# Bytecode Python
+__pycache__/
+*.py[cod]
+
+# Banco de Dados
+*.db
+*.sqlite3
+
+# Arquivos de sistema operacional
+.DS_Store
