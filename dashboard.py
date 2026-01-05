@@ -138,12 +138,14 @@ if total_investido > 0:
 else:
     rentabilidade_geral = 0
 
-col1.metric("Patrimônio Total", f"R$ {total_atual:,.2f}")
-col2.metric("Custo de Aquisição", f"R$ {total_investido:.2f}")
+col1.metric("Patrimônio Total", formatar_br(total_atual))
+col2.metric("Custo de Aquisição", formatar_br(total_investido))
+
+delta_formatado = f"{rentabilidade_geral:,.2f}%".replace(".", ",")
 col3.metric(
     "Lucro / Prejuízo",
-    f"R$ {lucro_total:.2f}",
-    f"{rentabilidade_geral:.2f}%"
+    formatar_br(lucro_total),
+    delta_formatado
 )
 
 st.divider()
@@ -178,19 +180,15 @@ colunas_para_exibir = [
     "Rentabilidade"
 ]
 
-def formatar_reais(valor):
-    """Mágica: Recebe float, devolve string brasileira"""
-    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
 def formatar_pct(valor):
     return f"{valor:,.2f}%".replace(".", ",")
 
 st.dataframe(
     df[colunas_para_exibir].style.format({
-        "Preço Médio": formatar_reais,
-        "Preço Atual": formatar_reais,
-        "Total Atual": formatar_reais,
-        "Lucro": formatar_reais,
+        "Preço Médio": formatar_br,
+        "Preço Atual": formatar_br,
+        "Total Atual": formatar_br,
+        "Lucro": formatar_br,
         "Rentabilidade": formatar_pct
     }),
     hide_index=True,
