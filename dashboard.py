@@ -12,12 +12,6 @@ def formatar_br(valor):
 
     return texto.replace(",", "X").replace(".", ",").replace("X", ".")
 
-st.set_page_config(
-    page_title = "Minha Carteira",
-    layout = "wide"
-)
-
-# Função do modal de Compra e Venda
 @st.dialog("Novo Registro")
 def open_modal_registro():
     tipo_op = st.radio("Qual operação você realizou?", ["Compra", "Venda"], horizontal=True)
@@ -71,6 +65,48 @@ def open_modal_registro():
         import time
         time.sleep(0.5)
         st.rerun()
+
+def formatar_pct(valor):
+    return f"{valor:,.2f}%".replace(".", ",")
+
+# --- Função Mestra de Estilização (Substitui a mini_metric) ---
+def gerar_card_html(label, value, delta_str=None, delta_val=0, is_simple=False):
+    """
+    Gera um container Flexbox. O HTML está alinhado à esquerda
+    para evitar que o Markdown interprete como bloco de código.
+    """
+    
+    if delta_str:
+        if delta_val > 0:
+            cor = "#28a745" # Verde
+            seta = "▲"
+        elif delta_val < 0:
+            cor = "#dc3545" # Vermelho
+            seta = "▼"
+        else:
+            cor = "#b0b0b0" # Cinza
+            seta = ""
+        html_delta = f'<span style="font-size: 14px; font-weight: bold; color: {cor};">{seta} {delta_str}</span>'
+    else:
+        html_delta = "" 
+
+    font_size_val = "20px" if is_simple else "24px"
+
+    # ATENÇÃO: O código HTML abaixo está 'feio' (colado na esquerda) propositalmente.
+    # Se você indentar as linhas do HTML, o Streamlit vai achar que é código e não vai funcionar.
+    return f"""
+<div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 60px; width: 100%;">
+<span style="font-size: {font_size_val}; font-weight: bold; color: white; line-height: 1.1;">{value}</span>
+{html_delta}
+</div>
+"""
+
+st.set_page_config(
+    page_title = "Minha Carteira",
+    layout = "wide"
+)
+
+# Função do modal de Compra e Venda
 
 st.title("Dashboard de Investimentos")
 
@@ -170,27 +206,84 @@ st.plotly_chart(fig)
 st.divider()
 st.subheader("Detalhamento")
 
-colunas_para_exibir = [
-    "Ativo", 
-    "Quantidade", 
-    "Preço Médio",
-    "Preço Atual",
-    "Total Atual",
-    "Lucro",
-    "Rentabilidade"
-]
+# --- Passo 1: Calcular a % na Carteira ---
+# Criamos uma nova coluna no DataFrame para não ter que fazer conta dentro do visual
+if total_atual > 0:
+    df["% Carteira"] = (df["Total Atual"] / total_atual) * 100
+else:
+    df["% Carteira"] = 0.0
 
-def formatar_pct(valor):
-    return f"{valor:,.2f}%".replace(".", ",")
+# --- Passo 2: Cabeçalho das 5 Colunas ---
+# Usamos proporções (lista de números) em vez de um número inteiro
+# Isso dá mais espaço para as colunas com métricas e menos para as simples
+cols = st.columns([1.5, 1, 1.5, 1.5, 1])
 
-st.dataframe(
-    df[colunas_para_exibir].style.format({
-        "Preço Médio": formatar_br,
-        "Preço Atual": formatar_br,
-        "Total Atual": formatar_br,
-        "Lucro": formatar_br,
-        "Rentabilidade": formatar_pct
-    }),
-    hide_index=True,
-    use_container_width=True
-)
+cols = st.columns([1.5, 1, 1.2, 1.2, 1])
+
+# Coluna 1: Esquerda (Texto)
+cols[0].markdown("**Ativo / Qtde**")
+
+# Colunas 2 a 5: Centralizadas (Números)
+# Usamos HTML simples para forçar o centro nos títulos
+cols[1].markdown("<div style='text-align: center;'><b>Preço Médio</b></div>", unsafe_allow_html=True)
+cols[2].markdown("<div style='text-align: center;'><b>Preço Atual</b></div>", unsafe_allow_html=True)
+cols[3].markdown("<div style='text-align: center;'><b>Patrimônio Atual</b></div>", unsafe_allow_html=True)
+cols[4].markdown("<div style='text-align: center;'><b>% Carteira</b></div>", unsafe_allow_html=True)
+
+st.divider()
+
+# Loop de Exibição
+for index, row in df.iterrows():
+    
+    c1, c2, c3, c4, c5 = st.columns([1.5, 1, 1.2, 1.2, 1])
+    
+    with c1:
+        # Coluna 1 (Texto/Ativo) - Flexbox manual para alinhar
+        # Também removemos a indentação interna do HTML
+        st.markdown(
+f"""<div style="display: flex; flex-direction: column; justify-content: center; height: 60px;">
+<span style='font-weight: bold; font-size: 20px; color: white;'>{row['Ativo']}</span>
+<span style='font-size: 14px; color: #888;'>{row['Quantidade']} cotas</span>
+</div>""", 
+            unsafe_allow_html=True
+        )
+        
+    with c2:
+        # Coluna 2 (Preço Médio) - Simples
+        html = gerar_card_html(
+            label="PM", 
+            value=formatar_br(row['Preço Médio']), 
+            is_simple=True
+        )
+        st.markdown(html, unsafe_allow_html=True)
+        
+    with c3:
+        # Coluna 3 (Cotação) - Completa
+        html = gerar_card_html(
+            label="Cotação",
+            value=formatar_br(row['Preço Atual']),
+            delta_str=f"{row['Rentabilidade']:,.2f}%".replace(".", ","),
+            delta_val=row['Rentabilidade']
+        )
+        st.markdown(html, unsafe_allow_html=True)
+        
+    with c4:
+        # Coluna 4 (Patrimônio) - Completa
+        html = gerar_card_html(
+            label="Total",
+            value=formatar_br(row['Total Atual']),
+            delta_str=formatar_br(row['Lucro']),
+            delta_val=row['Lucro']
+        )
+        st.markdown(html, unsafe_allow_html=True)
+        
+    with c5:
+        # Coluna 5 (% Carteira) - HTML direto sem indentação
+        html = f"""
+<div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 60px;">
+<span style="font-size: 20px; font-weight: bold;">{row['% Carteira']:,.2f}%</span>
+</div>""".replace(".", ",")
+        st.markdown(html, unsafe_allow_html=True)
+    
+    # Linha divisória
+    st.markdown("---")
