@@ -113,10 +113,9 @@ def calcular_carteira(transacoes):
             posicao['pm'] = 0.0
             posicao['total_investido'] = 0.0
 
-        # Filtro  para retornar só quem tem saldo positivo.
-        return {k: v for k, v in carteira.items() if v['qtde'] > 0}
+    # Filtro  para retornar só quem tem saldo positivo.
+    return {k: v for k, v in carteira.items() if v['qtde'] > 0}
     
-
 # Busca cotação em lote no Yahoo Finance (Integração com API)    
 def obter_precos_atuais(lista_tickers):
     if not lista_tickers:
@@ -155,7 +154,6 @@ def obter_precos_atuais(lista_tickers):
         print(f"erro na APT Yahoo Finance {e}")
         return {}
     
-
 # Verifica se o ticker existe na B3 antes de deixar salvar.    
 def validar_ticker(ticker_limpo):
     ticker_sujo = f"{ticker_limpo}.SA"
