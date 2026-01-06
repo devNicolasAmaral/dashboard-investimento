@@ -3,8 +3,8 @@ import pandas as pd
 import plotly.express as px
 import time
 from datetime import datetime
-from investimento import ler_transacoes, calcular_carteira, obter_precos_atuais, salvar_transacao, Transacao, validar_ticker
-
+# Adicione excluir_transacao e atualizar_transacao na lista
+from investimento import ler_transacoes, calcular_carteira, obter_precos_atuais, salvar_transacao, Transacao, validar_ticker, excluir_transacao, atualizar_transacao
 # --- Configuração Inicial ---
 st.set_page_config(
     page_title="Minha Carteira",
@@ -203,9 +203,7 @@ fig.update_traces(
 
 st.plotly_chart(fig)
 
-st.divider()
-
-# --- Seção: Detalhamento (Lista Flexbox) ---
+# --- Seção: Detalhamento ---
 
 st.subheader("Detalhamento")
 
@@ -227,7 +225,7 @@ for index, row in df.iterrows():
     c1, c2, c3, c4, c5 = st.columns([1.5, 1, 1.2, 1.2, 1])
     
     with c1:
-        # Coluna de Identificação (Alinhamento manual Flexbox)
+        # Coluna de Identificação
         st.markdown(
 f"""<div style="display: flex; flex-direction: column; justify-content: center; height: 60px;">
 <span style='font-weight: bold; font-size: 20px; color: white;'>{row['Ativo']}</span>
@@ -271,3 +269,70 @@ f"""<div style="display: flex; flex-direction: column; justify-content: center; 
         st.markdown(html, unsafe_allow_html=True)
     
     st.markdown("---")
+
+
+# --- Seção: Gerenciamento de Histórico ---
+st.subheader("Histórico de Transações")
+
+with st.expander("Ver Histórico Completo (Editar / Excluir)"):
+
+    dados_hist = [
+        {
+            "ID": t.id,
+            "Data": pd.to_datetime(t.data).date(), 
+            "Ticker": t.ticker,
+            "Operação": "Compra" if t.tipo == "C" else "Venda",
+            "Quantidade": t.quantidade,
+            "Preço Unitário": t.preco,
+            "Excluir": False
+        }
+        for t in historico
+    ]
+    
+    df_hist = pd.DataFrame(dados_hist)
+
+    
+    edicao = st.data_editor(
+        df_hist,
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "ID": st.column_config.NumberColumn(disabled=True), # Bloqueia edição do ID
+            "Data": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
+            "Preço Unitário": st.column_config.NumberColumn("Preço (R$)", format="%.2f"),
+            "Operação": st.column_config.SelectboxColumn("Tipo", options=["Compra", "Venda"]),
+            "Excluir": st.column_config.CheckboxColumn("Excluir?", help="Marque para deletar este registro")
+        },
+        num_rows="fixed",
+        key="editor_historico"
+    )
+
+if st.button("Salvar Alterações no Histórico", use_container_width=True):
+        
+        alteracao_realizada = False
+        
+        for index, row in edicao.iterrows():
+            id_transacao = row["ID"]
+
+            if row["Excluir"]:
+                excluir_transacao(id_transacao)
+                alteracao_realizada = True
+                continue 
+            
+
+            novo_tipo_cod = "C" if row["Operação"] == "Compra" else "V"
+            
+            atualizar_transacao(
+                id_transacao,
+                row["Ticker"],
+                row["Data"],
+                row["Quantidade"],
+                row["Preço Unitário"],
+                novo_tipo_cod
+            )
+            alteracao_realizada = True
+            
+        if alteracao_realizada:
+            st.success("Histórico atualizado com sucesso!")
+            time.sleep(1)
+            st.rerun()
