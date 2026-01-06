@@ -1,6 +1,7 @@
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 import yfinance as yf
 import contextlib
 
@@ -37,6 +38,7 @@ class Transacao:
     quantidade: int
     preco: float
     tipo: str
+    id: Optional[int] = None
 
 def salvar_transacao(t: Transacao):
     conn = _conectar()
@@ -65,16 +67,17 @@ def ler_transacoes():
     conn= _conectar()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT data, ticker, quantidade, preco, tipo FROM transacoes ORDER BY data ASC")
+    cursor.execute("SELECT id, data, ticker, quantidade, preco, tipo FROM transacoes ORDER BY data ASC")
     linhas = cursor.fetchall()
 
     for row in linhas:
         t = Transacao(
-            data=row[0],
-            ticker=row[1],
-            quantidade = int(row[2]),
-            preco = float(row[3]),
-            tipo = row[4] 
+            id=row[0],
+            data=row[1],
+            ticker=row[2],
+            quantidade = int(row[3]),
+            preco = float(row[4]),
+            tipo = row[5] 
         )
 
         transacoes.append(t)
@@ -164,3 +167,26 @@ def validar_ticker(ticker_limpo):
         return len(hist) > 0
     except Exception:
         return False
+
+
+def excluir_transacao(id_transacao):
+    conn = _conectar()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM transacoes WHERE id = ?", (id_transacao, ))
+    conn.commit()
+    conn.close()
+
+def atualizar_transacao(id_transacao, novo_ticker, nova_data, nova_qtde, novo_preco, novo_tipo):
+    conn = _conectar()
+    cursor = conn.cursor()
+
+    data_str = str(nova_data)
+
+    cursor.execute("""
+        UPDATE transacoes
+        SET ticker = ?, data = ?, quantidade = ?, preco = ?, tipo = ?
+        WHERE id = ?
+    """, (novo_ticker, data_str, nova_qtde, novo_preco, novo_tipo, id_transacao))
+
+    conn.commit()
+    conn.close()
