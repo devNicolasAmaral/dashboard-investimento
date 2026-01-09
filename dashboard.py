@@ -3,129 +3,128 @@ import pandas as pd
 import plotly.express as px
 import time
 from datetime import datetime
-# Adicione excluir_transacao e atualizar_transacao na lista
-from investimento import ler_transacoes, calcular_carteira, obter_precos_atuais, salvar_transacao, Transacao, validar_ticker, excluir_transacao, atualizar_transacao
-# --- Configuração Inicial ---
-st.set_page_config(
-    page_title="Minha Carteira",
-    layout="wide"
+from investimento import (
+    ler_transacoes, calcular_carteira, obter_precos_atuais, salvar_transacao, 
+    Transacao, validar_ticker, excluir_transacao, atualizar_transacao,
+    salvar_provento, ler_proventos, excluir_provento, Provento
 )
 
-# --- Funções Auxiliares e Estilização ---
+st.set_page_config(page_title="Minha Carteira", layout="wide")
 
+# Funções Visuais
 def formatar_br(valor):
-    """Aplica formatação monetária brasileira (R$ X.XXX,XX)."""
-    texto = f"R$ {valor:,.2f}"
-    return texto.replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
+# Função auxiliar para mini cards na tabela
 def gerar_card_html(label, value, delta_str=None, delta_val=0, is_simple=False):
-    """
-    Gera container Flexbox para alinhar métricas vertical e horizontalmente.
-    Utiliza HTML bruto para contornar limitações de alinhamento do Markdown padrão.
-    """
     if delta_str:
-        if delta_val > 0:
-            cor = "#28a745" # Verde
-            seta = "▲"
-        elif delta_val < 0:
-            cor = "#dc3545" # Vermelho
-            seta = "▼"
-        else:
-            cor = "#b0b0b0" # Cinza
-            seta = ""
+        cor = "#28a745" if delta_val > 0 else "#dc3545" if delta_val < 0 else "#b0b0b0"
+        seta = "▲" if delta_val > 0 else "▼" if delta_val < 0 else ""
         html_delta = f'<span style="font-size: 14px; font-weight: bold; color: {cor};">{seta} {delta_str}</span>'
     else:
         html_delta = "" 
 
     font_size_val = "20px" if is_simple else "24px"
-
-    # Mantém HTML sem indentação para evitar renderização como bloco de código Markdown
+    
     return f"""
-<div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 60px; width: 100%;">
-<span style="font-size: {font_size_val}; font-weight: bold; color: white; line-height: 1.1;">{value}</span>
-{html_delta}
-</div>
-"""
+    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 60px; width: 100%;">
+        <span style="font-size: {font_size_val}; font-weight: bold; color: white; line-height: 1.1;">{value}</span>
+        {html_delta}
+    </div>
+    """
 
+# Transação ou Provento
 @st.dialog("Novo Registro")
 def open_modal_registro():
-    """Gerencia o formulário de input, validação e persistência de transações."""
-    tipo_op = st.radio("Qual operação você realizou?", ["Compra", "Venda"], horizontal=True)
+    # Abas para separar o tipo de registro
+    tab1, tab2 = st.tabs(["Negociação (Compra/Venda)", "Proventos (Div/JCP)"])
     
-    cor_destaque = "green" if tipo_op == "Compra" else "red"
-    st.markdown(f"Preencha os dados da sua <span style='color:{cor_destaque}'><b>{tipo_op}</b></span>:", unsafe_allow_html=True)
+    # Compra e venda
+    with tab1:
+        tipo_op = st.radio("Operação", ["Compra", "Venda"], horizontal=True)
+        cor_destaque = "green" if tipo_op == "Compra" else "red"
+        st.markdown(f"Registrar <span style='color:{cor_destaque}'><b>{tipo_op}</b></span>:", unsafe_allow_html=True)
 
-    ticker_op = st.text_input("Ticker (ex: PETR4)").upper().strip()
-    data_op = st.date_input("Data da Operação", datetime.now())
-    qtde_op = st.number_input("Quantidade", min_value=1, step=1)
-    preco_op = st.number_input("Preço Unitário (R$)", min_value=0.01, step=0.01, format="%.2f")
-    
-    if st.button("Salvar Registro", use_container_width=True):
-        # Validações de entrada
-        if not ticker_op:
-            st.error("O Ticker é obrigatório.")
-            return
+        t_ticker = st.text_input("Ticker", key="t_ticker").upper().strip()
+        t_data = st.date_input("Data", datetime.now(), key="t_data")
+        t_qtde = st.number_input("Quantidade", min_value=1, step=1, key="t_qtde")
+        t_preco = st.number_input("Preço Unitário (R$)", min_value=0.01, step=0.01, format="%.2f", key="t_preco")
         
-        ticker_limpo = ticker_op.replace(".SA", "")
-        
-        if not validar_ticker(ticker_limpo):
-            st.error(f"O ativo '{ticker_limpo}' não existe na B3.")
-            return
-
-        if tipo_op == "Venda":
-            historico_atual = ler_transacoes()
-            carteira_atual = calcular_carteira(historico_atual)
-            qtd_em_maos = carteira_atual.get(ticker_limpo, {}).get('qtde', 0)
+        if st.button("Salvar Negociação", use_container_width=True):
+            if not t_ticker:
+                st.error("Ticker obrigatório.")
+                return
             
-            if qtd_em_maos == 0:
-                st.error(f"Você não tem {ticker_limpo} na carteira para vender.")
-                return
-            elif qtde_op > qtd_em_maos:
-                st.error(f"Saldo insuficiente! Você tem {qtd_em_maos} e tentou vender {qtde_op}.")
+            ticker_limpo = t_ticker.replace(".SA", "")
+            if not validar_ticker(ticker_limpo):
+                st.error("Ativo não encontrado.")
                 return
 
-        tipo_codigo = "C" if tipo_op == "Compra" else "V"
-        
-        nova_transacao = Transacao(
-            data=data_op,
-            ticker=ticker_limpo,
-            quantidade=qtde_op,
-            preco=preco_op,
-            tipo=tipo_codigo
-        )
-        
-        salvar_transacao(nova_transacao)
-        st.success("Salvo com sucesso!")
-        time.sleep(0.5)
-        st.rerun()
+            if tipo_op == "Venda":
+                carteira_atual = calcular_carteira(ler_transacoes())
+                qtd_em_maos = carteira_atual.get(ticker_limpo, {}).get('qtde', 0)
+                if t_qtde > qtd_em_maos:
+                    st.error(f"Venda maior que saldo ({qtd_em_maos}).")
+                    return
 
-# --- Estrutura Principal do Dashboard ---
+            tipo_cod = "C" if tipo_op == "Compra" else "V"
+            nova_t = Transacao(data=t_data, ticker=ticker_limpo, quantidade=t_qtde, preco=t_preco, tipo=tipo_cod)
+            salvar_transacao(nova_t)
+            st.success("Negociação salva!")
+            time.sleep(0.5)
+            st.rerun()
 
+    # Proventos
+    with tab2:
+        st.markdown("Registrar <span style='color:#FFD700'><b>Recebimento</b></span>:", unsafe_allow_html=True)
+        
+        tipo_prov = st.radio("Tipo", ["Dividendo", "JCP"], horizontal=True)
+        p_ticker = st.text_input("Ticker", key="p_ticker").upper().strip()
+        p_data = st.date_input("Data Pagamento", datetime.now(), key="p_data")
+        p_valor = st.number_input("Valor TOTAL Recebido (R$)", min_value=0.01, step=0.01, format="%.2f", help="Coloque o valor total que caiu na conta, não o valor por cota.")
+        
+        if st.button("Salvar Provento", use_container_width=True):
+            if not p_ticker:
+                st.error("Ticker obrigatório.")
+                return
+            
+            ticker_limpo = p_ticker.replace(".SA", "")
+            # Valida o ticker para proventos
+            if not validar_ticker(ticker_limpo):
+                st.error("Ativo não encontrado.")
+                return
+                
+            tipo_cod = "DIV" if tipo_prov == "Dividendo" else "JCP"
+            novo_p = Provento(data=p_data, ticker=ticker_limpo, valor_total=p_valor, tipo=tipo_cod)
+            salvar_provento(novo_p)
+            st.success("Provento registrado!")
+            time.sleep(0.5)
+            st.rerun()
+
+# Header e Botão
 st.title("Dashboard de Investimentos")
-
-# Botão de Ação (Alinhado à direita)
-col_titulo, col_botao = st.columns([4 , 1])
-with col_botao:
-    st.write("") 
-    st.write("") 
+c_tit, c_btn = st.columns([4, 1])
+with c_btn:
+    st.write("")
+    st.write("")
     if st.button("Novo Registro", use_container_width=True):
         open_modal_registro()
 
-# --- Processamento de Dados ---
+# Leitura de dados
+transacoes = ler_transacoes()
+proventos = ler_proventos()
 
-historico = ler_transacoes()
-
-if not historico:
-    st.warning("Sua carteira está vazia. Use o terminal para registrar operações.")
+if not transacoes and not proventos:
+    st.warning("Carteira vazia. Adicione um registro.")
     st.stop()
 
-carteira = calcular_carteira(historico)
+carteira = calcular_carteira(transacoes)
 tickers = list(carteira.keys())
 
-with st.spinner(f"Baixando cotação de {len(tickers)} ativos..."):
+with st.spinner("Atualizando cotações..."):
     precos_atuais = obter_precos_atuais(tickers)
 
-# Consolida os dados em uma lista para criação do DataFrame
+# Processamento Tabela Principal
 dados_tabela = []
 total_investido = 0.0
 total_atual = 0.0
@@ -133,206 +132,151 @@ total_atual = 0.0
 for ticker, dados in carteira.items():
     qtde = dados['qtde']
     pm = dados['pm']
-
-    preco_atual = precos_atuais.get(ticker, pm) # Fallback para PM caso falhe a cotação
-
+    preco_atual = precos_atuais.get(ticker, pm)
+    
     val_investido = qtde * pm
     val_atual = qtde * preco_atual
-    lucro_rs = val_atual - val_investido
-    rentabilidade_pct = ((preco_atual / pm) - 1) * 100
-
+    
     total_investido += val_investido
     total_atual += val_atual
-
+    
+    lucro = val_atual - val_investido
+    rent = ((preco_atual/pm)-1)*100 if pm > 0 else 0
+    
     dados_tabela.append({
         "Ativo": ticker,
         "Quantidade": qtde,
         "Preço Médio": pm,
         "Preço Atual": preco_atual,
         "Total Atual": val_atual,
-        "Lucro": lucro_rs,
-        "Rentabilidade": rentabilidade_pct
+        "Lucro": lucro,
+        "Rentabilidade": rent
     })
 
 df = pd.DataFrame(dados_tabela)
 
-# Cálculos Totais da Carteira
-lucro_total = total_atual - total_investido
-rentabilidade_geral = ((total_atual / total_investido) - 1) * 100 if total_investido > 0 else 0
+# Cálculos Gerais
+lucro_patrimonial = total_atual - total_investido
+rent_geral = ((total_atual/total_investido)-1)*100 if total_investido > 0 else 0
 
-# Adiciona coluna de porcentagem para ponderação da carteira
 if total_atual > 0:
     df["% Carteira"] = (df["Total Atual"] / total_atual) * 100
 else:
     df["% Carteira"] = 0.0
 
-# --- Seção: Visão Geral ---
+# Cálculo de Proventos
+total_proventos = sum(p.valor_total for p in proventos)
+
+lucro_com_proventos = lucro_patrimonial + total_proventos
 
 st.subheader("Visão Geral")
-col1, col2, col3 = st.columns(3)
+kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
-col1.metric("Patrimônio Total", formatar_br(total_atual))
-col2.metric("Custo de Aquisição", formatar_br(total_investido))
+kpi1.metric("Patrimônio", formatar_br(total_atual))
+kpi2.metric("Investido", formatar_br(total_investido))
+kpi3.metric("Proventos Recebidos", formatar_br(total_proventos), delta=None)
 
-delta_formatado = f"{rentabilidade_geral:,.2f}%".replace(".", ",")
-col3.metric(
-    "Lucro / Prejuízo",
-    formatar_br(lucro_total),
-    delta_formatado
+# O KPI de Resultado mostra o lucro total (Valorização + Dividendos)
+kpi4.metric(
+    "Resultado Global", 
+    formatar_br(lucro_com_proventos), 
+    delta=f"{(lucro_com_proventos/total_investido)*100:.2f}%" if total_investido > 0 else None
 )
 
 st.divider()
 
-# --- Seção: Gráfico de Distribuição ---
+# Gráfico
+st.subheader("Distribuição")
+if not df.empty:
+    fig = px.pie(df, values="Total Atual", names="Ativo", hole=0.4)
+    st.plotly_chart(fig)
 
-st.subheader("Distribuição da Carteira")
-
-df["Label_Formatada"] = df["Total Atual"].apply(formatar_br)
-
-fig = px.pie(
-    df, 
-    values="Total Atual", 
-    names="Ativo",
-    hole=0.4,
-    custom_data=["Label_Formatada"]
-)
-
-fig.update_traces(
-    hovertemplate="<b>%{label}</b><br>Valor: %{customdata[0]}<br>Representação: %{percent}"
-)
-
-st.plotly_chart(fig)
-
-# --- Seção: Detalhamento ---
-
+# Tabela detalhada
 st.subheader("Detalhamento")
-
-# Cabeçalho da Lista
 cols = st.columns([1.5, 1, 1.2, 1.2, 1])
-
 cols[0].markdown("**Ativo / Qtde**")
-# Centraliza títulos das colunas numéricas via HTML
 cols[1].markdown("<div style='text-align: center;'><b>Preço Médio</b></div>", unsafe_allow_html=True)
 cols[2].markdown("<div style='text-align: center;'><b>Preço Atual</b></div>", unsafe_allow_html=True)
 cols[3].markdown("<div style='text-align: center;'><b>Patrimônio Atual</b></div>", unsafe_allow_html=True)
 cols[4].markdown("<div style='text-align: center;'><b>% Carteira</b></div>", unsafe_allow_html=True)
-
 st.divider()
 
-# Renderiza a lista de ativos
-for index, row in df.iterrows():
-    
+for _, row in df.iterrows():
     c1, c2, c3, c4, c5 = st.columns([1.5, 1, 1.2, 1.2, 1])
-    
     with c1:
-        # Coluna de Identificação
-        st.markdown(
-f"""<div style="display: flex; flex-direction: column; justify-content: center; height: 60px;">
-<span style='font-weight: bold; font-size: 20px; color: white;'>{row['Ativo']}</span>
-<span style='font-size: 14px; color: #888;'>{row['Quantidade']} cotas</span>
-</div>""", 
-            unsafe_allow_html=True
-        )
-        
+        st.markdown(f"<div style='font-weight:bold; font-size:20px; margin-top:5px;'>{row['Ativo']}</div>", unsafe_allow_html=True)
+        st.caption(f"{row['Quantidade']} cotas")
     with c2:
-        html = gerar_card_html(
-            label="PM", 
-            value=formatar_br(row['Preço Médio']), 
-            is_simple=True
-        )
-        st.markdown(html, unsafe_allow_html=True)
-        
+        st.markdown(gerar_card_html("PM", formatar_br(row['Preço Médio']), is_simple=True), unsafe_allow_html=True)
     with c3:
-        html = gerar_card_html(
-            label="Cotação",
-            value=formatar_br(row['Preço Atual']),
-            delta_str=f"{row['Rentabilidade']:,.2f}%".replace(".", ","),
-            delta_val=row['Rentabilidade']
-        )
-        st.markdown(html, unsafe_allow_html=True)
-        
+        st.markdown(gerar_card_html("Cotação", formatar_br(row['Preço Atual']), f"{row['Rentabilidade']:,.2f}%", row['Rentabilidade']), unsafe_allow_html=True)
     with c4:
-        html = gerar_card_html(
-            label="Total",
-            value=formatar_br(row['Total Atual']),
-            delta_str=formatar_br(row['Lucro']),
-            delta_val=row['Lucro']
-        )
-        st.markdown(html, unsafe_allow_html=True)
-        
+        st.markdown(gerar_card_html("Total", formatar_br(row['Total Atual']), formatar_br(row['Lucro']), row['Lucro']), unsafe_allow_html=True)
     with c5:
-        # Coluna simples com cor customizada para %
-        html = f"""
-<div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 60px;">
-<span style="font-size: 20px; font-weight: bold;">{row['% Carteira']:,.2f}%</span>
-</div>""".replace(".", ",")
-        st.markdown(html, unsafe_allow_html=True)
-    
+        st.markdown(f"<div style='text-align:center; margin-top:15px; font-weight:bold; font-size:18px;'>{row['% Carteira']:,.2f}%</div>", unsafe_allow_html=True)
     st.markdown("---")
 
+# Históricos
+c_hist1, c_hist2 = st.columns(2)
 
-# --- Seção: Gerenciamento de Histórico ---
-st.subheader("Histórico de Transações")
-
-with st.expander("Ver Histórico Completo (Editar / Excluir)"):
-
-    dados_hist = [
-        {
-            "ID": t.id,
-            "Data": pd.to_datetime(t.data).date(), 
-            "Ticker": t.ticker,
-            "Operação": "Compra" if t.tipo == "C" else "Venda",
-            "Quantidade": t.quantidade,
-            "Preço Unitário": t.preco,
-            "Excluir": False
-        }
-        for t in historico
-    ]
-    
-    df_hist = pd.DataFrame(dados_hist)
-
-    
-    edicao = st.data_editor(
-        df_hist,
-        hide_index=True,
-        use_container_width=True,
-        column_config={
-            "ID": st.column_config.NumberColumn(disabled=True), # Bloqueia edição do ID
-            "Data": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
-            "Preço Unitário": st.column_config.NumberColumn("Preço (R$)", format="%.2f"),
-            "Operação": st.column_config.SelectboxColumn("Tipo", options=["Compra", "Venda"]),
-            "Excluir": st.column_config.CheckboxColumn("Excluir?", help="Marque para deletar este registro")
-        },
-        num_rows="fixed",
-        key="editor_historico"
-    )
-
-if st.button("Salvar Alterações no Histórico", use_container_width=True):
+# Histórico de proventos
+with c_hist1:
+    st.subheader("Histórico de Proventos")
+    if proventos:
+        dados_prov = [{"Data": pd.to_datetime(p.data).date(), "Ticker": p.ticker, "Valor": p.valor_total, "Tipo": p.tipo, "ID": p.id, "Excluir": False} for p in proventos]
+        df_prov = pd.DataFrame(dados_prov)
         
-        alteracao_realizada = False
+        editor_prov = st.data_editor(
+            df_prov, 
+            hide_index=True, 
+            column_config={
+                "ID": None,
+                "Data": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
+                "Valor": st.column_config.NumberColumn("Valor", format="R$ %.2f"),
+                "Excluir": st.column_config.CheckboxColumn("Excluir?")
+            },
+            key="editor_proventos"
+        )
         
-        for index, row in edicao.iterrows():
-            id_transacao = row["ID"]
+        if st.button("Salvar Exclusões (Proventos)"):
+            mudou = False
+            for _, row in editor_prov.iterrows():
+                if row["Excluir"]:
+                    excluir_provento(row["ID"])
+                    mudou = True
+            if mudou:
+                st.rerun()
+    else:
+        st.info("Nenhum provento registrado.")
 
-            if row["Excluir"]:
-                excluir_transacao(id_transacao)
-                alteracao_realizada = True
-                continue 
-            
+# Histórico de negociação
+with c_hist2:
+    st.subheader("Histórico de Negociações")
+    if transacoes:
+        dados_neg = [{"Data": pd.to_datetime(t.data).date(), "Ticker": t.ticker, "Op": t.tipo, "Qtd": t.quantidade, "Preço": t.preco, "ID": t.id, "Excluir": False} for t in transacoes]
+        df_neg = pd.DataFrame(dados_neg)
+        
+        editor_neg = st.data_editor(
+            df_neg, 
+            hide_index=True, 
+            column_config={
+                "ID": None,
+                "Data": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
+                "Preço": st.column_config.NumberColumn("Preço", format="R$ %.2f"),
+                "Excluir": st.column_config.CheckboxColumn("Excluir?")
+            },
+            key="editor_negociacoes"
+        )
 
-            novo_tipo_cod = "C" if row["Operação"] == "Compra" else "V"
-            
-            atualizar_transacao(
-                id_transacao,
-                row["Ticker"],
-                row["Data"],
-                row["Quantidade"],
-                row["Preço Unitário"],
-                novo_tipo_cod
-            )
-            alteracao_realizada = True
-            
-        if alteracao_realizada:
-            st.success("Histórico atualizado com sucesso!")
-            time.sleep(1)
-            st.rerun()
+        if st.button("Salvar Correções (Negociações)"):
+            mudou = False
+            for _, row in editor_neg.iterrows():
+                if row["Excluir"]:
+                    excluir_transacao(row["ID"])
+                    mudou = True
+                else:
+                    pass 
+            if mudou:
+                st.rerun()
+    else:
+        st.info("Nenhuma negociação registrada.")
