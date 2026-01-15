@@ -18,7 +18,7 @@ def frame(nav_title: str):
 
         # Sidebar
         # Fundo (#141111) com largura travada em 280px
-        with ui.column().classes('w-[280px] h-full bg-[#141111] text-white p-0 gap-0'):
+        with ui.column().classes('w-[280px] h-full bg-[#15161A] text-white p-0 gap-0'):
             
             # Logo da Aplicação
             with ui.row().classes('w-full h-24 items-center justify-start px-10'):
@@ -29,13 +29,13 @@ def frame(nav_title: str):
                 
                 # Dashboard (Estado Ativo)
                 with ui.row().classes('w-full items-center gap-6 cursor-pointer group'):
-                    ui.icon('dashboard').classes('text-2xl text-red-500')
-                    ui.label('Dashboard').classes('text-base text-red-500')
+                    ui.icon('dashboard').classes('text-2xl text-[#51567D]')
+                    ui.label('Dashboard').classes('text-base text-[#51567D]')
 
                 # Transações (Estado Inativo com Hover)
                 with ui.row().classes('w-full items-center gap-6 cursor-pointer transition-colors group'):
-                    ui.icon('account_balance_wallet').classes('text-2xl text-gray-500 group-hover:text-red-400 transition-colors')
-                    ui.label('Transações').classes('text-base text-gray-500 group-hover:text-red-400 transition-colors')
+                    ui.icon('account_balance_wallet').classes('text-2xl text-[#FFFFFF] group-hover:text-[#51567D] transition-colors')
+                    ui.label('Transações').classes('text-base text-[#FFFFFF] group-hover:text-[#51567D] transition-colors')
 
         # Conteúdo Fluido
         # Ocupa todo o espaço restante da tela e contém o Header e o Corpo
@@ -43,7 +43,7 @@ def frame(nav_title: str):
 
             # Barra Superior (Header)
             # Fundo para alinhar visualmente com a Sidebar
-            with ui.row().classes('w-full h-24 bg-[#141111] items-center justify-between px-10'):
+            with ui.row().classes('w-full h-24 bg-[#15161A] items-center justify-between px-10'):
                 
                 # Título da Página Atual
                 ui.label(nav_title).classes('text-3xl font-semibold tracking-tight text-white')
@@ -54,7 +54,7 @@ def frame(nav_title: str):
                     # Barra de Pesquisa
                     with ui.input(placeholder='Pesquisar...') \
                             .props('dark dense borderless input-class="text-gray-300"') \
-                            .classes('w-64 bg-[#1F1A1A] rounded-lg pl-3 text-sm'):
+                            .classes('w-64 bg-[#2A2B2F] rounded-lg pl-3 text-sm'):
                         
                         # Ícone de Lupa (Injetado no slot 'append' do input)
                         ui.icon('search').props('slot=append').classes('text-gray-400 text-xl cursor-pointer hover:text-white transition-colors mr-2 self-center')
@@ -69,5 +69,5 @@ def frame(nav_title: str):
 
             # Área de Conteúdo (Yield)
             # Fundo cinza (#1F1A1A) onde as páginas injetam seu conteúdo específico
-            with ui.column().classes('w-full flex-1 bg-[#1F1A1A] p-10 overflow-y-auto'):
+            with ui.column().classes('w-full flex-1 bg-[#2A2B2F] p-10 overflow-y-auto'):
                 yield
