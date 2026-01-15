@@ -1,15 +1,24 @@
-# Ambiente Virtual
-.venv
-venv/
-env/
-
 # Bytecode Python
 __pycache__/
 *.py[cod]
+*$py.class
+
+# Variáveis de Ambiente
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak
+venv.bak
 
 # Banco de Dados
-*.db
 *.sqlite3
+*.db
 
-# Arquivos de sistema operacional
-.DS_Store
+# Docker
+.dockerignore
+
+# IDEs
+.vscode/
+.idea/
