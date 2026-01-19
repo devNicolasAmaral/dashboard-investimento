@@ -35,3 +35,48 @@ Você não precisa configurar ambiente Python localmente. Se tiver o Docker inst
    ```bash
    git clone [https://github.com/devNicolasAmaral/dashboard-investimento.git](https://github.com/devNicolasAmaral/dashboard-investimento.git)
    cd dashboard-investimento
+   ```
+
+2. **Suba os containers:**
+   ```bash
+   docker-compose up --build
+   ```
+
+3. **Acesse:**
+   * **Aplicação:** `http://localhost:8080` (Ou a porta definida no seu docker-compose)
+   * **API Docs:** `http://localhost:8000/docs`
+
+---
+
+## 🔧 Variáveis de Ambiente (.env)
+
+O sistema espera um arquivo `.env` na raiz para configurar o banco de dados. Um exemplo (`.env.example`) está incluído:
+
+```env
+POSTGRES_USER=admin
+POSTGRES_PASSWORD=secret
+POSTGRES_DB=investments_db
+DATABASE_URL=postgresql+asyncpg://admin:secret@db:5432/investments_db
+```
+
+---
+
+## 🧩 Funcionalidades Chave (Backend)
+
+* **Ingestão de Dados:** Endpoints assíncronos para cadastro e atualização de ativos.
+* **Cálculo de Rentabilidade:** Lógica segregada em Services para processar dividendos e valorização.
+* **Validação Estrita:** Uso de Pydantic V2 para garantir que nenhum dado sujo entre no banco.
+
+---
+
+## 🚀 Roadmap
+
+* [ ] Implementar sistema de cache (Redis) para cotações em tempo real.
+* [ ] Adicionar testes de integração (Pytest) no pipeline de CI.
+* [ ] Refinar dashboard analítico com gráficos comparativos (Benchmarking).
+
+---
+
+<div align="center">
+  <sub>Desenvolvido por <a href="https://github.com/devNicolasAmaral">Nicolas Amaral</a></sub>
+</div>
