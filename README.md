@@ -1,12 +1,10 @@
 # Dashboard de Investimentos
-
-Sistema web para gerenciamento de ativos financeiros, desenvolvido para controlar investimentos, acompanhar patrimônio e servir como base para análises financeiras.
-
 ![Status](https://img.shields.io/badge/Status-Em_Desenvolvimento-yellow?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Async-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white)
 
+Sistema web para gerenciamento de ativos financeiros, desenvolvido para controlar investimentos, acompanhar patrimônio e servir como base para análises financeiras.
 ---
 
 ## Funcionalidades
