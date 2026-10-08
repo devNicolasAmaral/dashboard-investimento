@@ -1,13 +1,20 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Gestor de Investimentos"
-    DATABASE_URL: str
-    
+
+    postgres_user: str
+    postgres_password: str
+    postgres_db: str
+    postgres_host: str = "db"
+    postgres_port: int = 5432
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        extra="ignore"  # Ignora variáveis do Docker (User, Pass)
+        extra="ignore"
     )
+
 
 settings = Settings()
