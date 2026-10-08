@@ -1,0 +1,13 @@
+[project]
+name = "dashboard-investimento"
+version = "0.1.0"
+description = "Dashboard de acompanhamento de investimentos"
+requires-python = ">=3.14"
+dependencies = [
+    "nicegui",
+    "pydantic",
+    "pydantic-settings",
+    "psycopg2-binary",
+    "sqlalchemy",
+    "sqlmodel",
+]
